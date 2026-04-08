@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+
+  <style>
+    /* Video Slider Controls */
+    .video-switchbar {
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      background: #111;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      box-sizing: border-box;
+    }
+    .video-switchbar .switch-btn {
+      padding: 10px 14px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .video-switchbar .switch-btn.active {
+      background: #0ea5e9;
+      border-color: #0ea5e9;
+    }
+    .video-switchbar .hint {
+      margin-left: auto;
+      color: rgba(255,255,255,0.7);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* TB4 2개 가로 배치 */
+    .tb4-video-wrapper {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .tb4-video-container {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    @media (max-width: 900px) {
+      .tb4-video-container {
+        flex-direction: column;
+      }
+    }
+
+    /* ===============================
+    TB4 Monitor (moved from robot_display)
+    =============================== */
+    .tb4-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 12px;
+    }
+
+    .tb4-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      padding: 16px;
+    }
+
+    .tb4-title { margin:0 0 12px 0; font-size:16px; font-weight:900; }
+
+    .tb4-kv {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 10px;
+      font-size: 14px;
+      align-items: start;
+    }
+
+    .tb4-k { color:#374151; font-weight:700; }
+    .tb4-v { color:#111; }
+
+    .tb4-pill {
+      display:inline-flex; align-items:center;
+      padding:4px 10px; border-radius:999px;
+      font-size:12px; font-weight:800;
+      background:#eef2ff; color:#3730a3;
+    }
+    .tb4-pill.green { background:#dcfce7; color:#166534; }
+    .tb4-pill.red   { background:#fee2e2; color:#991b1b; }
+    .tb4-pill.amber { background:#fef3c7; color:#92400e; }
+
+    .tb4-progress-wrap { display:flex; align-items:center; gap:10px; }
+    .tb4-progress {
+      width: 260px; max-width: 100%;
+      height: 10px; background:#e5e7eb;
+      border-radius:999px; overflow:hidden;
+    }
+    .tb4-progress > div { height:100%; width:0%; background:#22c55e; }
+
+    .tb4-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .tb4-log {
+      height: 260px; overflow:auto; background:#0b1220; color:#dbeafe;
+      border-radius:10px; padding:12px; font-size:12px; line-height:1.5;
+    }
+    .tb4-log .row { border-bottom: 1px solid rgba(255,255,255,0.08); padding:6px 0; }
+
+    @media (max-width: 900px) {
+      .tb4-grid { grid-template-columns: 1fr; }
+      .tb4-progress { width: 100%; }
+    }
+
+    /* ===============================
+       Global
+    =============================== */
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f3f4f6;
+      color: #111;
+    }
+
+    /* ===============================
+       Header
+    =============================== */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 60px;
+      padding: 0 24px;
+      background-color: #1f2933;
+      color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .header-left {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .nav-link{
+      padding: 6px 14px;
+      background-color: #0ea5e9;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    
+    .nav-link:hover { filter: brightness(0.95); }
+
+    .logout-link {
+      padding: 6px 14px;
+      background-color: #4CAF50;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .logout-link:hover { background-color: #45a049; }
+
+    /* ===============================
+       Video (Top)
+       - 라벨 하단 고정: 카드 높이 고정 + column flex
+    =============================== */
+    .top-video-wrapper {
+      width: 100%;
+      background-color: #111;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .video-container {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    /* ✅ 고정 높이: 라벨 위치 안정화 */
+    .video-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      min-width: 0;
+      height: 280px; /* 필요시 320/360 등으로 조정 */
+    }
+
+    /* 영상 영역(있으면 img, 없으면 placeholder) */
+    .video-stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      min-height: 0;
+    }
+
+    .video-stage img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* 꽉 채우기 */
+      display: block;
+    }
+
+    /* ✅ Camera가 없을 때도 라벨은 하단 유지 */
+    .video-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #bbb;
+      font-size: 14px;
+      background: #000;
+    }
+
+    .camera-label {
+      height: 36px;              /* ✅ 라벨 높이 고정 */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      font-size: 14px;
+      background-color: #1f2933;
+      color: #fff;
+      flex: 0 0 auto;
+    }
+
+    /* ===============================
+       Layout: Middle + Bottom
+    =============================== */
+    .page {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+  
+    /* Middle section */
+    .middle {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      padding: 16px;
+    }
+
+    .card-title {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #111;
+    }
+
+    .subtle {
+      font-size: 12px;
+      color: #6b7280;
+      margin-left: 8px;
+      font-weight: 500;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 10px;
+      font-size: 14px;
+      align-items: start;
+    }
+
+    .kv .k {
+      color: #374151;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #3730a3;
+    }
+
+    .pill.red   { background: #fee2e2; color: #991b1b; }
+    .pill.green { background: #dcfce7; color: #166534; }
+    .pill.amber { background: #fef3c7; color: #92400e; }
+
+    .dispatch {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 100%;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+    .btn-primary:hover { filter: brightness(0.95); }
+
+    .btn-outline {
+      background: white;
+      border: 1px solid #d1d5db;
+      color: #111;
+    }
+    .btn-outline:hover { background: #f9fafb; }
+
+    
+
+    
+    .muted {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .video-container { flex-direction: column; }
+      .video-card { height: 260px; }
+      .middle { grid-template-columns: 1fr; }
+      .bottom { grid-template-columns: 1fr; }
+    }
+
+    /* ===============================
+    Bottom Fixed Action Bar
+    =============================== */
+    .bottom-action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+
+      padding: 12px 16px;
+      background: rgba(31, 41, 51, 0.95); /* 헤더 색 계열 */
+      backdrop-filter: blur(6px);
+
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.25);
+      z-index: 1000;
+    }
+
+    /* 버튼 크기 통일 */
+    .bottom-action-bar .btn {
+      min-width: 140px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    /* 페이지 내용이 버튼에 가리지 않게 하단 여백 확보 */
+    .page {
+      padding-bottom: 80px;  /* action bar 높이보다 크게 */
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">My Dashboard</div>
+    <div class="header-right">
+      <!-- <a href="{{ url_for('robot_display') }}" class="nav-link">TB4 Monitor</a> -->
+      <span>👤 {{ username }}</span>
+      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+    </div>
+  </header>
+
+  <!-- Video Slider Switch (Ping reduction: only one group streams at a time) -->
+  <div class="video-switchbar">
+    <button id="btnSlider1" class="switch-btn active" type="button">슬라이더1 (Camera 1~3)</button>
+    <button id="btnSlider2" class="switch-btn" type="button">슬라이더2 (TB4 /robot2, /robot6)</button>
+  </div>
+
+
+
+  <!-- Slider 1: USB Cameras (default) -->
+  <section id="slider1" class="top-video-wrapper">
+    <div class="video-container">
+      <div class="video-card">
+        <div class="video-stage">
+          <img id="cam1Img" src="/video_feed1" data-src="/video_feed1">
+        </div>
+        <div class="camera-label">Camera 1</div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-stage">
+          <img id="cam2Img" src="/video_feed2" data-src="/video_feed2">
+        </div>
+        <div class="camera-label">Camera 2</div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-stage">
+          <img id="cam3Img" src="/video_feed3" data-src="/video_feed3">
+        </div>
+        <div class="camera-label">Camera 3</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slider 2: TB4 Cameras (initially off to reduce ping) -->
+  <section id="slider2" class="tb4-video-wrapper" style="display:none;">
+  <div class="tb4-video-container">
+    <div class="video-card">
+      <div class="video-stage">
+        <img id="tb4Cam2Img" src="" data-src="/tb4_video_feed?ns=/robot2" />
+      </div>
+      <div class="camera-label">TB4 (/robot2) Camera</div>
+    </div>
+
+    <div class="video-card">
+      <div class="video-stage">
+        <img id="tb4Cam6Img" src="" data-src="/tb4_video_feed?ns=/robot6" />
+      </div>
+      <div class="camera-label">TB4 (/robot6) Camera</div>
+    </div>
+  </div>
+  </section>
+
+  <section style="margin-top: 12px;">
+    <!-- robot2 -->
+    <div class="tb4-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <h2 class="tb4-title" style="margin:0;">TB4 (/robot2)</h2>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tb4-mono" id="tb4_2_ns">/robot2</span>
+          <span id="tb4_2_connected" class="tb4-pill amber">CHECKING</span>
+        </div>
+      </div>
+
+      <div class="tb4-kv" style="margin-top:12px;">
+        <div class="tb4-k">마지막 수신</div><div class="tb4-v"><span id="tb4_2_last_seen" class="tb4-mono">-</span></div>
+
+        <div class="k">현재 상황 (/robot2)</div>
+        <div class="v"><span id="incident_robot2" class="pill amber">-</span></div>
+
+        <div class="tb4-k">배터리</div>
+        <div class="tb4-v">
+          <div class="tb4-progress-wrap">
+            <div class="tb4-progress"><div id="tb4_2_batt_bar"></div></div>
+            <div style="min-width:70px; text-align:right;"><span id="tb4_2_batt_text" class="tb4-mono">0%</span></div>
+          </div>
+          <div style="margin-top:8px; font-size:12px; color:#6b7280;">
+            voltage: <span id="tb4_2_volt" class="tb4-mono">-</span> V,
+            current: <span id="tb4_2_curr" class="tb4-mono">-</span> A
+          </div>
+        </div>
+
+        <div class="tb4-k">Pose Frame</div><div class="tb4-v"><span id="tb4_2_pose_frame" class="tb4-mono">map</span></div>
+        <div class="tb4-k">위치 (x, y)</div>
+        <div class="tb4-v">x=<span id="tb4_2_x" class="tb4-mono">0.00</span>, y=<span id="tb4_2_y" class="tb4-mono">0.00</span></div>
+        <div class="tb4-k">Yaw</div><div class="tb4-v"><span id="tb4_2_yaw" class="tb4-mono">0.0</span> °</div>
+        <div class="tb4-k">속도 (v, w)</div>
+        <div class="tb4-v">v=<span id="tb4_2_lin" class="tb4-mono">0.00</span> m/s, w=<span id="tb4_2_ang" class="tb4-mono">0.00</span> rad/s</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="tb4-title" style="font-size:14px; margin-bottom:8px;">최근 이벤트</div>
+        <div id="tb4_2_log" class="tb4-log"></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="margin-top: 12px;">
+    <!-- robot6 -->
+    <div class="tb4-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+        <h2 class="tb4-title" style="margin:0;">TB4 (/robot6)</h2>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tb4-mono" id="tb4_6_ns">/robot6</span>
+          <span id="tb4_6_connected" class="tb4-pill amber">CHECKING</span>
+        </div>
+      </div>
+
+      <div class="tb4-kv" style="margin-top:12px;">
+        <div class="tb4-k">마지막 수신</div><div class="tb4-v"><span id="tb4_6_last_seen" class="tb4-mono">-</span></div>
+
+        <div class="k">현재 상황 (/robot6)</div>
+        <div class="v"><span id="incident_robot6" class="pill amber">-</span></div>
+
+        <div class="tb4-k">배터리</div>
+        <div class="tb4-v">
+          <div class="tb4-progress-wrap">
+            <div class="tb4-progress"><div id="tb4_6_batt_bar"></div></div>
+            <div style="min-width:70px; text-align:right;"><span id="tb4_6_batt_text" class="tb4-mono">0%</span></div>
+          </div>
+          <div style="margin-top:8px; font-size:12px; color:#6b7280;">
+            voltage: <span id="tb4_6_volt" class="tb4-mono">-</span> V,
+            current: <span id="tb4_6_curr" class="tb4-mono">-</span> A
+          </div>
+        </div>
+
+        <div class="tb4-k">Pose Frame</div><div class="tb4-v"><span id="tb4_6_pose_frame" class="tb4-mono">map</span></div>
+        <div class="tb4-k">위치 (x, y)</div>
+        <div class="tb4-v">x=<span id="tb4_6_x" class="tb4-mono">0.00</span>, y=<span id="tb4_6_y" class="tb4-mono">0.00</span></div>
+        <div class="tb4-k">Yaw</div><div class="tb4-v"><span id="tb4_6_yaw" class="tb4-mono">0.0</span> °</div>
+        <div class="tb4-k">속도 (v, w)</div>
+        <div class="tb4-v">v=<span id="tb4_6_lin" class="tb4-mono">0.00</span> m/s, w=<span id="tb4_6_ang" class="tb4-mono">0.00</span> rad/s</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="tb4-title" style="font-size:14px; margin-bottom:8px;">최근 이벤트</div>
+        <div id="tb4_6_log" class="tb4-log"></div>
+      </div>
+    </div>
+  </section>
+
+    
+
+
+
+  <!-- ✅ 하단 고정 액션 바 -->
+  <div class="bottom-action-bar">
+    <button class="btn btn-outline" onclick="stopAlarm()">경보 종료</button>
+    <button id="btnReturnHome" class="btn btn-warning" type="button">복귀 요청</button>
+    <button id="btnOpenDb" class="btn btn-outline" type="button">상태 로그</button>
+  </div>
+
+
+
+
+  <dialog id="dbDialog" style="width:min(1100px, 96vw); border:none; border-radius:12px; padding:0;">
+    <div style="padding:14px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; background:#1f2933; color:#fff;">
+      <div style="font-weight:900;">Robot Status Log (mydatabase.db)</div>
+      <div style="display:flex; gap:8px;">
+        <select id="dbNs" style="height:34px; border-radius:8px; padding:0 10px; border:1px solid #334155;">
+          <option value="">ALL</option>
+          <option value="/robot2">/robot2</option>
+          <option value="/robot6">/robot6</option>
+        </select>
+        <button id="btnReloadDb" class="btn btn-outline" style="height:34px; padding:0 12px;">새로고침</button>
+        <button id="btnClearDb" class="btn btn-outline" style="height:34px; padding:0 12px;">비우기</button>
+        <button id="btnCloseDb" class="btn btn-outline" style="height:34px; padding:0 12px;">닫기</button>
+      </div>
+    </div>
+
+    <div style="padding:12px 14px;">
+      <div style="overflow:auto; max-height:70vh; border:1px solid #e5e7eb; border-radius:10px;">
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead style="position:sticky; top:0; background:#f9fafb; z-index:1;">
+            <tr>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">ts</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">ns</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">connected</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">battery%</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">volt</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">curr</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">x</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">y</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">yaw</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">v</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">w</th>
+              <th style="text-align:left; padding:8px; border-bottom:1px solid #e5e7eb;">incident</th>
+            </tr>
+          </thead>
+          <tbody id="dbTbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px; color:#6b7280; font-size:12px;">
+        * 조회는 최신 200개 기본(서버에서 limit 적용). 저장은 /api/tb4_status 호출 시 2초 간격 throttle.
+      </div>
+    </div>
+  </dialog>
+
+  
+  <div id="snackbar" style="
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #333;
+    color: #fff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: none;
+    z-index: 9999;
+    font-size: 14px;">
+  </div>
+
+</body>
+
+<script>
+  function fmtTsMillis(sec){
+    if(!sec || sec <= 0) return "-";
+    return new Date(sec * 1000).toLocaleString();
+  }
+  function n2(v, d=2){
+    if(v === null || v === undefined) return "-";
+    const f = Number(v);
+    return isNaN(f) ? String(v) : f.toFixed(d);
+  }
+
+  async function loadDbRows(){
+    const tbody = document.getElementById("dbTbody");
+    const ns = document.getElementById("dbNs")?.value || "";
+    if(!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="12" style="padding:10px;">loading...</td></tr>`;
+    try{
+      const q = new URLSearchParams();
+      q.set("limit", "200");
+      if(ns) q.set("ns", ns);
+
+      const res = await fetch(`/api/db/robot_status?${q.toString()}`, {cache:"no-store"});
+      const data = await res.json();
+      if(!res.ok || !data.ok) throw new Error("load failed");
+
+      const rows = data.rows || [];
+      if(rows.length === 0){
+        tbody.innerHTML = `<tr><td colspan="12" style="padding:10px;">no data</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(r => {
+        return `
+          <tr>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${fmtTsMillis(r.ts)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9; font-family:ui-monospace;">${r.robot_ns ?? "-"}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${r.connected ? "Y" : "N"}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${r.battery_percent ?? 0}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.battery_voltage,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.battery_current,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.x,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.y,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.yaw_deg,1)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.lin_vel,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${n2(r.ang_vel,2)}</td>
+            <td style="padding:8px; border-bottom:1px solid #f1f5f9;">${(r.incident_status ?? "-")}</td>
+          </tr>
+        `;
+      }).join("");
+    }catch(e){
+      tbody.innerHTML = `<tr><td colspan="12" style="padding:10px;">error</td></tr>`;
+    }
+  }
+
+  document.getElementById("btnOpenDb")?.addEventListener("click", async () => {
+    const dlg = document.getElementById("dbDialog");
+    if(!dlg) return;
+    dlg.showModal();
+    await loadDbRows();
+  });
+  document.getElementById("btnCloseDb")?.addEventListener("click", () => {
+    document.getElementById("dbDialog")?.close();
+  });
+  document.getElementById("btnReloadDb")?.addEventListener("click", loadDbRows);
+  document.getElementById("dbNs")?.addEventListener("change", loadDbRows);
+
+  document.getElementById("btnClearDb")?.addEventListener("click", async () => {
+    if(!confirm("DB 로그를 비울까요?")) return;
+    try{
+      const res = await fetch("/api/db/robot_status/clear", {method:"POST"});
+      const data = await res.json();
+      if(!res.ok || !data.ok) throw new Error();
+      await loadDbRows();
+      // 있으면 기존 snackbar 사용
+      try { showSnackbar("DB 로그 비움 완료"); } catch(e){}
+    }catch(e){
+      alert("DB 비우기 실패");
+    }
+  });
+</script>
+
+
+<script>
+  // ✅ 추가: 복귀 요청 API 호출
+  document.getElementById("btnReturnHome")?.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/return_home", { method: "POST" });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) throw new Error(data.error || "request failed");
+      alert("복귀 요청 전송 완료");
+      console.log(data)
+
+    } catch (e) {
+      console.error(e);
+      alert("복귀 요청 실패");
+    }
+  });
+</script>
+
+<script>
+  // dashboard 들어오면 카메라 ON 보장
+  fetch("/api/cameras/start", { method: "POST" }).catch(()=>{});
+</script>
+
+<script src="{{ url_for('static', filename='js/events.js') }}"></script>
+
+
+<script>
+  async function stopAlarm(){
+    try{
+      const res = await fetch("/api/alarm/stop", {method:"POST"});
+      if(res.ok){
+        // 필요하면 토스트/스낵바 표시
+        console.log("alarm stopped");
+      }
+    }catch(e){}
+  }
+</script>
+
+<script>
+  // -----------------------------
+  // TB4 helpers
+  // -----------------------------
+  function clamp(n){ n = parseInt(n,10); return isNaN(n)?0:Math.max(0,Math.min(100,n)); }
+  function fmtTs(sec){
+    if(!sec || sec <= 0) return "-";
+    const d = new Date(sec * 1000);
+    return d.toLocaleString();
+  }
+  function setText(id, v){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = (v === null || v === undefined || v === "") ? "-" : String(v);
+  }
+  function toFixedMaybe(v, digits){
+    if(v === null || v === undefined) return "-";
+    if(typeof v === "number") return v.toFixed(digits);
+    const f = Number(v);
+    return isNaN(f) ? String(v) : f.toFixed(digits);
+  }
+
+  // -----------------------------
+  // SSE: /tb4_events (선택)
+  // -----------------------------
+  const logEl = document.getElementById("tb4_log");
+
+  function pushLog(prefix, obj){
+    const logEl = document.getElementById(prefix+"_log");
+    if(!logEl) return;
+
+    const row = document.createElement("div");
+    row.className = "row tb4-mono";
+    const ts = obj.ts ? fmtTs(obj.ts) : "-";
+    row.textContent = `[${ts}] ${obj.type || "event"} ` + JSON.stringify(obj);
+    logEl.prepend(row);
+
+    const rows = logEl.querySelectorAll(".row");
+    if(rows.length > 60){
+      for(let i=60; i<rows.length; i++) rows[i].remove();
+    }
+  }
+
+  try {
+      const es = new EventSource("/tb4_events");
+      es.addEventListener("tb4", (e) => {
+        const ev = JSON.parse(e.data);
+        const ns = ev.ns || "";
+        if(ns === "/robot6") pushLog("tb4_6", ev);
+        else if(ns === "/robot2") pushLog("tb4_2", ev);
+      });
+      es.addEventListener("ping", () => {});
+      es.onerror = () => {};
+  } catch(e){}
+
+</script>
+
+<script>
+  function clamp(n){ n = parseInt(n,10); return isNaN(n)?0:Math.max(0,Math.min(100,n)); }
+  function fmtTs(sec){ if(!sec || sec<=0) return "-"; return new Date(sec*1000).toLocaleString(); }
+  function setText(id, v){ const el=document.getElementById(id); if(el) el.textContent = (v??"-"); }
+  function toFixedMaybe(v,d){ if(v==null) return "-"; const f=Number(v); return isNaN(f)?String(v):f.toFixed(d); }
+
+  async function refreshTB4(ns, prefix){
+    try{
+      const res = await fetch(`/api/tb4_status?ns=${encodeURIComponent(ns)}`, {cache:"no-store"});
+      if(!res.ok) return;
+      const d = await res.json();
+
+      setText(prefix+"_ns", d.robot_ns ?? ns);
+
+      const pill = document.getElementById(prefix+"_connected");
+      if(pill){
+        if(d.connected){ pill.textContent="CONNECTED"; pill.className="tb4-pill green"; }
+        else { pill.textContent="DISCONNECTED"; pill.className="tb4-pill red"; }
+      }
+
+      setText(prefix+"_last_seen", fmtTs(d.last_seen_ts));
+      setText(prefix+"_pose_frame", d.pose_frame ?? "map");
+
+      const batt = clamp(d.battery_percent ?? 0);
+      const bar = document.getElementById(prefix+"_batt_bar");
+      const txt = document.getElementById(prefix+"_batt_text");
+      if(bar) bar.style.width = batt + "%";
+      if(txt) txt.textContent = batt + "%";
+      if(bar) bar.style.background = (batt<=20) ? "#ef4444" : (batt<=50) ? "#f59e0b" : "#22c55e";
+
+      setText(prefix+"_volt", toFixedMaybe(d.battery_voltage, 2));
+      setText(prefix+"_curr", toFixedMaybe(d.battery_current, 2));
+
+      setText(prefix+"_x", toFixedMaybe(d.x, 2));
+      setText(prefix+"_y", toFixedMaybe(d.y, 2));
+      setText(prefix+"_yaw", toFixedMaybe(d.yaw_deg, 1));
+      setText(prefix+"_lin", toFixedMaybe(d.lin_vel, 2));
+      setText(prefix+"_ang", toFixedMaybe(d.ang_vel, 2));
+    }catch(e){}
+  }
+
+  function startTB4Poll(){
+    refreshTB4("/robot6", "tb4_6");
+    refreshTB4("/robot2", "tb4_2");
+    setInterval(()=>{
+      refreshTB4("/robot6", "tb4_6");
+      refreshTB4("/robot2", "tb4_2");
+    }, 1000);
+  }
+
+  startTB4Poll();
+</script>
+
+
+<script>
+  async function refreshIncident(ns, elId){
+    try{
+      const res = await fetch(`/api/incident_status?ns=${encodeURIComponent(ns)}`, {cache:"no-store"});
+      if(!res.ok) return;
+      const d = await res.json();
+      const el = document.getElementById(elId);
+      if(!el) return;
+      el.textContent = (d.status && String(d.status).trim()) ? d.status : "-";
+    }catch(e){}
+  }
+
+  function startIncidentPoll(){
+    refreshIncident("/robot2", "incident_robot2");
+    refreshIncident("/robot6", "incident_robot6");
+    setInterval(()=>{
+      refreshIncident("/robot2", "incident_robot2");
+      refreshIncident("/robot6", "incident_robot6");
+    }, 2000);
+  }
+
+  startIncidentPoll();
+</script>
+
+<script>
+  // Video Slider Switch
+  const slider1 = document.getElementById("slider1");
+  const slider2 = document.getElementById("slider2");
+  const btn1 = document.getElementById("btnSlider1");
+  const btn2 = document.getElementById("btnSlider2");
+
+  function stopStreamImg(imgEl){
+    if(!imgEl) return;
+    // MJPEG 스트림 연결 해제: src 제거
+    imgEl.src = "";
+  }
+
+  function startStreamImg(imgEl){
+    if(!imgEl) return;
+    const s = imgEl.getAttribute("data-src");
+    if(!s) return;
+
+    // 동일 src 재설정 시 브라우저가 재연결 안 할 때가 있어 강제 리셋
+    if(imgEl.src && imgEl.src.endsWith(s)) {
+      imgEl.src = "";
+      setTimeout(()=>{ imgEl.src = s; }, 0);
+    } else {
+      imgEl.src = s;
+    }
+  }
+
+  function setActiveButton(active){
+    if(!btn1 || !btn2) return;
+    btn1.classList.toggle("active", active === 1);
+    btn2.classList.toggle("active", active === 2);
+  }
+
+  function activateSlider1(){
+    // 전환 전(슬라이더2) 송출 중지
+    stopStreamImg(document.getElementById("tb4Cam2Img"));
+    stopStreamImg(document.getElementById("tb4Cam6Img"));
+
+    // UI 전환
+    if(slider2) slider2.style.display = "none";
+    if(slider1) slider1.style.display = "block";
+    setActiveButton(1);
+
+    // 전환 후(슬라이더1) 송출 시작
+    startStreamImg(document.getElementById("cam1Img"));
+    startStreamImg(document.getElementById("cam2Img"));
+    startStreamImg(document.getElementById("cam3Img"));
+  }
+
+  function activateSlider2(){
+    // 전환 전(슬라이더1) 송출 중지
+    stopStreamImg(document.getElementById("cam1Img"));
+    stopStreamImg(document.getElementById("cam2Img"));
+    stopStreamImg(document.getElementById("cam3Img"));
+
+    // UI 전환
+    if(slider1) slider1.style.display = "none";
+    if(slider2) slider2.style.display = "block";
+    setActiveButton(2);
+
+    // 전환 후(슬라이더2) 송출 시작
+    startStreamImg(document.getElementById("tb4Cam2Img"));
+    startStreamImg(document.getElementById("tb4Cam6Img"));
+  }
+
+  if(btn1) btn1.addEventListener("click", activateSlider1);
+  if(btn2) btn2.addEventListener("click", activateSlider2);
+
+  // 초기 화면: 슬라이더1 (Camera 1~3)
+  activateSlider1();
+</script>
+
+
+
+
+</html>
